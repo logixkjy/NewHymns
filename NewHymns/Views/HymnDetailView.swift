@@ -152,15 +152,14 @@ struct HymnDetailView: View {
                         Spacer(minLength: 12)
                         CircleIconButton(systemName: "chevron.right") { vs.send(.nextHymn) }
                     }
-                    .padding(.horizontal, 24)
-                    .frame(height: 56) // ✅ 고정 높이로 “자리 흔들림” 방지
+                    .padding(.horizontal, 24)                    .frame(height: 56) // ✅ 고정 높이로 “자리 흔들림” 방지
                     .appTintedLightOnly(scheme)
                 }
                 .padding(.vertical, 8)
-                .background(Color.clear) // 인셋 배경은 투명
+                .background(Color.white) // 인셋 배경은 투명
             }
-//            .animation(.easeInOut, value: vs.isPlaying)
-//            .animation(.easeInOut, value: vs.mode)
+            .animation(.easeInOut, value: vs.isPlaying)
+            .animation(.easeInOut, value: vs.mode)
             .onAppear {
                 guard !didFirstAppear else { return }   // ← 다시 나타날 때는 초기화 금지
                 didFirstAppear = true

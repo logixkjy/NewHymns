@@ -46,6 +46,15 @@ struct ZoomableImage: UIViewRepresentable {
     }
     
     func updateUIView(_ scroll: UIScrollView, context: Context) {
+        if context.coordinator.imageView.image != nil {
+            context.coordinator.imageView.removeFromSuperview()
+            context.coordinator.imageView = UIImageView()
+        }
+        let iv = context.coordinator.imageView
+        iv.isUserInteractionEnabled = true
+        iv.translatesAutoresizingMaskIntoConstraints = true
+        
+        scroll.addSubview(iv)
         context.coordinator.replaceImage(image, in: scroll)
     }
     
@@ -91,11 +100,21 @@ struct ZoomableImage: UIViewRepresentable {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self, let scroll = self.scrollView, let img = imageView.image else { return }
                 
-                let height = (scroll.bounds.size.width * img.size.height) / img.size.width
-                imageView.frame = CGRect(origin: .zero, size: CGSize(width: scroll.bounds.size.width, height: height))
-                scroll.contentSize = imageView.bounds.size
+                self.imageView.removeFromSuperview()
+                self.imageView = UIImageView()
                 
-                self.configureZoomAfterLayout(scroll: scroll)
+                let iv = self.imageView
+                iv.isUserInteractionEnabled = true
+                iv.translatesAutoresizingMaskIntoConstraints = true
+                
+                scroll.addSubview(iv)
+                
+                self.replaceImage(img, in: scroll)
+//                let height = (scroll.bounds.size.width * img.size.height) / img.size.width
+//                imageView.frame = CGRect(origin: .zero, size: CGSize(width: scroll.bounds.size.width, height: height))
+//                scroll.contentSize = imageView.bounds.size
+//                
+//                self.configureZoomAfterLayout(scroll: scroll)
             }
         }
         
@@ -142,27 +161,28 @@ struct ZoomableImage: UIViewRepresentable {
             
             // 3) "줌 기준"은 항상 imageView.bounds (pt)
             let bounds = scroll.bounds.size
-            let base   = imageView.bounds.size
+            let base   = imageView.frame.size
             guard base.width > 0, base.height > 0 else { return }
             
             let xScale = bounds.width / base.width
             let yScale = bounds.height / base.height
-            let yScale2 = max((bounds.height / base.height), 0.85)
-            let newMin = (xScale > yScale) ? yScale : xScale
+            let yScale2 = max((bounds.height / base.height), 0.75)
+            let newMin = min(yScale, xScale)
             let newMax = 2.0
             let viewZoom = (xScale > yScale2) ? yScale2 : xScale
 //            print("testLog bounds \(bounds), base \(base)")
 //            print("testLog min \(newMin), max \(newMax), view \(viewZoom)")
             
+//            print("test log minimumZoomScale \(newMin)")
             scroll.minimumZoomScale = newMin
             scroll.maximumZoomScale = newMax
             minScale = newMin
             maxScale = newMax
             
             // 화면 맞춤
-            scroll.setZoomScale(1, animated: false)
-            centerOrTopAlign(scroll: scroll)
-            didInit = true
+                scroll.setZoomScale(viewZoom, animated: false)
+                self.centerOrTopAlign(scroll: scroll)
+                self.didInit = true
         }
         
         @objc func handleDoubleTap(_ gr: UITapGestureRecognizer) {
@@ -176,7 +196,7 @@ struct ZoomableImage: UIViewRepresentable {
                 scroll.zoom(to: rect, animated: true)
             } else {
                 scroll.setZoomScale(minScale, animated: true)
-                centerOrTopAlign(scroll: scroll)
+//                centerOrTopAlign(scroll: scroll)
             }
         }
         
@@ -198,6 +218,7 @@ struct ZoomableImage: UIViewRepresentable {
             
             let inset = UIEdgeInsets(top: 0, left: sideInset, bottom: -topInset, right: -sideInset)
             scrollView.contentInset = inset
+//            print("test log zoomlevel \(scrollView.zoomScale)")
         }
         
         func centerOrTopAlign(scroll: UIScrollView) {
