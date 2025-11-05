@@ -152,7 +152,8 @@ struct HymnDetailView: View {
                         Spacer(minLength: 12)
                         CircleIconButton(systemName: "chevron.right") { vs.send(.nextHymn) }
                     }
-                    .padding(.horizontal, 24)                    .frame(height: 56) // ✅ 고정 높이로 “자리 흔들림” 방지
+                    .padding(.horizontal, 24)
+                    .frame(height: 56) // ✅ 고정 높이로 “자리 흔들림” 방지
                     .appTintedLightOnly(scheme)
                 }
                 .padding(.vertical, 8)

@@ -28,11 +28,11 @@ struct ZoomableImage: UIViewRepresentable {
         scroll.decelerationRate = .fast
         scroll.contentInsetAdjustmentBehavior = .never
         
-        let iv = context.coordinator.imageView
-        iv.isUserInteractionEnabled = true
-        iv.translatesAutoresizingMaskIntoConstraints = true
-        
-        scroll.addSubview(iv)
+//        let iv = context.coordinator.imageView
+//        iv.isUserInteractionEnabled = true
+//        iv.translatesAutoresizingMaskIntoConstraints = true
+//        
+//        scroll.addSubview(iv)
         
         let doubleTap = UITapGestureRecognizer(target: context.coordinator,
                                                action: #selector(Coordinator.handleDoubleTap(_:)))
@@ -167,7 +167,7 @@ struct ZoomableImage: UIViewRepresentable {
             let xScale = bounds.width / base.width
             let yScale = bounds.height / base.height
             let yScale2 = max((bounds.height / base.height), 0.75)
-            let newMin = min(yScale, xScale)
+            let newMin = (xScale > yScale) ? yScale : xScale
             let newMax = 2.0
             let viewZoom = (xScale > yScale2) ? yScale2 : xScale
 //            print("testLog bounds \(bounds), base \(base)")
@@ -180,9 +180,9 @@ struct ZoomableImage: UIViewRepresentable {
             maxScale = newMax
             
             // 화면 맞춤
-                scroll.setZoomScale(viewZoom, animated: false)
-                self.centerOrTopAlign(scroll: scroll)
-                self.didInit = true
+            scroll.setZoomScale(viewZoom, animated: false)
+            self.centerOrTopAlign(scroll: scroll)
+            self.didInit = true
         }
         
         @objc func handleDoubleTap(_ gr: UITapGestureRecognizer) {
