@@ -36,6 +36,9 @@ struct BookmarksFeature {
         // 🔹 새로 추가
         var isFullscreenScore = false         // 풀사이즈 악보
         var isAudioPanelPresented = false     // 오디오 패널 시트
+        // 🔹 자동 스크롤
+        var isAutoScrollEnabled: Bool = false // 자동 스크롤 ON/OFF
+        var autoScrollSpeed: Double = 1.0     // 1-3 = 스크롤 속도
     }
     
     enum Action: Equatable {
@@ -68,6 +71,10 @@ struct BookmarksFeature {
         // 🔹 새로 추가
         case toggleFullscreenScore(Bool)      // true=켜기/false=끄기
         case setAudioPanel(Bool)              // 하단 시트 표시/해제
+        
+        // 🔹 자동 스크롤
+        case toggleAutoScroll                 // 자동 스크롤 ON/OFF
+        case setAutoScrollSpeed(Double)       // 스크롤 속도 설정
         
         // 로딩
         case loadedAssets(score: UIImage?, hasAudio: Bool, duration: TimeInterval)
@@ -267,6 +274,15 @@ struct BookmarksFeature {
                 
             case .setAudioPanel(let on):
                 state.isAudioPanelPresented = on
+                return .none
+                
+                // 🔹 자동 스크롤
+            case .toggleAutoScroll:
+                state.isAutoScrollEnabled.toggle()
+                return .none
+                
+            case .setAutoScrollSpeed(let speed):
+                state.autoScrollSpeed = speed
                 return .none
             }
         }
