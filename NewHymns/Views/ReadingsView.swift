@@ -67,9 +67,7 @@ struct ReadingsView: View {
                 }
                 .listStyle(.plain)
                 
-                BannerAdView()
-                    .frame(height: 50)
-                    .background(.ultraThinMaterial)
+                BannerSlot()
             }
             .onAppear {
                 store.send(.search)
