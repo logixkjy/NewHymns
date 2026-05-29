@@ -31,7 +31,7 @@ public extension DependencyValues {
 }
 
 final class FMDBHandle: @unchecked Sendable {
-    var queue: FMDatabaseQueue?
+    nonisolated(unsafe) var queue: FMDatabaseQueue?
     deinit { queue?.close() }
 }
 

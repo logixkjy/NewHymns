@@ -11,12 +11,22 @@ import SwiftUI
 import ComposableArchitecture
 
 private let audioTimerID: String = "Bookmarks.audioTimerID"
+private let bookmarkSortModeKey: String = "Bookmarks.sortMode"
+private let bookmarkCustomOrderKey: String = "Bookmarks.customOrder"
 
 @Reducer
 struct BookmarksFeature {
+    enum SortMode: String, CaseIterable, Equatable {
+        case numberAsc
+        case numberDesc
+        case custom
+    }
+
     @ObservableState
     struct State: Equatable {
         var items: [Hymn] = []
+        var sortMode: SortMode = .numberAsc
+        var customOrder: [Int] = []
         
         // 상세 화면
         var hymn: Hymn = Hymn(number: 0, title: "", words: "", bookmark: false, img: "", youtubeId: 0)
@@ -38,13 +48,15 @@ struct BookmarksFeature {
         var isAudioPanelPresented = false     // 오디오 패널 시트
         // 🔹 자동 스크롤
         var isAutoScrollEnabled: Bool = false // 자동 스크롤 ON/OFF
-        var autoScrollSpeed: Double = 1.0     // 1-3 = 스크롤 속도
+        var autoScrollSpeed: Double = 4.5     // 1-8 = 스크롤 속도
     }
     
     enum Action: Equatable {
         case onAppear
         case refresh
         case loaded([Hymn])
+        case setSortMode(SortMode)
+        case move(IndexSet, Int)
         case delete(IndexSet)
         case open(Hymn)
         
@@ -89,17 +101,45 @@ struct BookmarksFeature {
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
-            case .onAppear, .refresh:
-                return .run  { send in
+            case .onAppear:
+                if let raw = UserDefaults.standard.string(forKey: bookmarkSortModeKey),
+                   let saved = SortMode(rawValue: raw) {
+                    state.sortMode = saved
+                }
+                state.customOrder = UserDefaults.standard.array(forKey: bookmarkCustomOrderKey) as? [Int] ?? []
+                return .run { send in
+                    let list = try await bookmarkRepo.list()
+                    await send(.loaded(list))
+                }
+            case .refresh:
+                return .run { send in
                     let list = try await bookmarkRepo.list()
                     await send(.loaded(list))
                 }
             case .loaded(let hymns):
-                state.items = hymns
+                state.items = Self.applySort(items: hymns, mode: state.sortMode, customOrder: state.customOrder)
+                state.customOrder = state.items.map(\.number)
+                UserDefaults.standard.set(state.customOrder, forKey: bookmarkCustomOrderKey)
+                return .none
+            case .setSortMode(let mode):
+                state.sortMode = mode
+                state.items = Self.applySort(items: state.items, mode: mode, customOrder: state.customOrder)
+                state.customOrder = state.items.map(\.number)
+                UserDefaults.standard.set(mode.rawValue, forKey: bookmarkSortModeKey)
+                UserDefaults.standard.set(state.customOrder, forKey: bookmarkCustomOrderKey)
+                return .none
+            case .move(let source, let destination):
+                state.items.move(fromOffsets: source, toOffset: destination)
+                state.sortMode = .custom
+                state.customOrder = state.items.map(\.number)
+                UserDefaults.standard.set(SortMode.custom.rawValue, forKey: bookmarkSortModeKey)
+                UserDefaults.standard.set(state.customOrder, forKey: bookmarkCustomOrderKey)
                 return .none
             case .delete(let idxSet):
               let toDelete = idxSet.map { state.items[$0].number }
               state.items.remove(atOffsets: idxSet)
+              state.customOrder.removeAll { toDelete.contains($0) }
+              UserDefaults.standard.set(state.customOrder, forKey: bookmarkCustomOrderKey)
 
               return .run { send in
                 await withTaskGroup(of: Void.self) { group in
@@ -216,7 +256,6 @@ struct BookmarksFeature {
                     await send(.tick)
                     await send(.cancelTicker)
                 }
-                return .none
                 
             case .startTicker:
                 return .run { send in
@@ -230,7 +269,6 @@ struct BookmarksFeature {
                 
             case .cancelTicker:
                 return .cancel(id: audioTimerID)
-                return .none
                 
             case .tick:
                 return .run { send in
@@ -284,6 +322,25 @@ struct BookmarksFeature {
             case .setAutoScrollSpeed(let speed):
                 state.autoScrollSpeed = speed
                 return .none
+            }
+        }
+    }
+}
+
+private extension BookmarksFeature {
+    static func applySort(items: [Hymn], mode: SortMode, customOrder: [Int]) -> [Hymn] {
+        switch mode {
+        case .numberAsc:
+            return items.sorted { $0.number < $1.number }
+        case .numberDesc:
+            return items.sorted { $0.number > $1.number }
+        case .custom:
+            let orderIndex = Dictionary(uniqueKeysWithValues: customOrder.enumerated().map { ($1, $0) })
+            return items.sorted { lhs, rhs in
+                let l = orderIndex[lhs.number] ?? Int.max
+                let r = orderIndex[rhs.number] ?? Int.max
+                if l != r { return l < r }
+                return lhs.number < rhs.number
             }
         }
     }

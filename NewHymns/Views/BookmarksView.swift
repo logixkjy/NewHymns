@@ -11,24 +11,41 @@ import ComposableArchitecture
 
 struct BookmarksView: View {
     let store: StoreOf<BookmarksFeature>
+    @State private var editMode: EditMode = .inactive
+
     var body: some View {
-        WithViewStore(store, observe: { $0 }) { vs in
-            VStack(spacing: 0) {
-                List {
-                    ForEach(vs.items) { h in BookmarkHymnCell(store: store, h: h) }
-                        .onDelete { vs.send(.delete($0)) }
-                }
-                .listStyle(.plain)
-                
-                BannerSlot()
+        VStack(spacing: 0) {
+            List {
+                ForEach(store.items) { h in BookmarkHymnCell(store: store, h: h) }
+                    .onDelete { store.send(.delete($0)) }
+                    .onMove { from, to in
+                        store.send(.move(from, to))
+                    }
             }
-            .onAppear {
-                vs.send(.onAppear)
-                if InterstitialAdManager.shared.recordEventAndCheckShow() {
-                    InterstitialAdManager.shared.showIfAvailable()
+            .listStyle(.plain)
+            
+            BannerSlot()
+        }
+        .onAppear {
+            store.send(.onAppear)
+        }
+        .refreshable { store.send(.refresh) }
+        .environment(\.editMode, $editMode)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button("번호 오름차순") { store.send(.setSortMode(.numberAsc)) }
+                    Button("번호 내림차순") { store.send(.setSortMode(.numberDesc)) }
+                    Button("직접 정렬") { store.send(.setSortMode(.custom)) }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
                 }
             }
-            .refreshable { vs.send(.refresh) }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if store.sortMode == .custom {
+                    EditButton()
+                }
+            }
         }
     }
 }

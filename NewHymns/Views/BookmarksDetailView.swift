@@ -26,11 +26,12 @@ struct BookmarksDetailView: View {
     @AppStorage("StaticPage.fontSize") private var fontSize: Double = 17
     @AppStorage("HymnDetail.lastMode") private var savedMode: Int = Mode.score.rawValue
     @AppStorage("HymnDetail.autoScrollEnabled") private var savedScrollEnabled: Bool = false
-    @AppStorage("HymnDetail.autoScrollSpeed") private var savedScrollSpeed: Double = 1.0
+    @AppStorage("HymnDetail.autoScrollSpeed") private var savedScrollSpeed: Double = 4.5
     
     // 자동 스크롤
     @State private var scrollOffset: CGFloat = 0
     @State private var autoScrollTimer: Timer?
+    @State private var lastDragTranslation: CGFloat = 0
     
     init(store: StoreOf<BookmarksFeature>, hymn: Hymn) {
         self.store = store
@@ -49,13 +50,13 @@ struct BookmarksDetailView: View {
         }
         
         // 속도가 유효한 범위인지 확인
-        guard speed >= 1 && speed <= 3 else {
+        guard speed >= 1 && speed <= 8 else {
             return
         }
         
         // 타이머 시작 (속도에 따라 스크롤 오프셋 증가)
-        autoScrollTimer = Timer.scheduledTimer(withTimeInterval: 0.07, repeats: true) { _ in
-            scrollOffset += CGFloat(speed) * 0.0007
+        autoScrollTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { _ in
+            scrollOffset += CGFloat(speed) * 0.0001008
             if scrollOffset > 1.0 {
                 scrollOffset = 1.0
                 autoScrollTimer?.invalidate()
@@ -107,6 +108,25 @@ struct BookmarksDetailView: View {
                                     proxy.scrollTo("lyricsContent", anchor: .init(x: 0.5, y: newValue))
                                 }
                             }
+                            .simultaneousGesture(
+                                DragGesture(minimumDistance: 0)
+                                    .onChanged { value in
+                                        guard vs.isAutoScrollEnabled else { return }
+                                        autoScrollTimer?.invalidate()
+                                        autoScrollTimer = nil
+                                        let delta = value.translation.height - lastDragTranslation
+                                        lastDragTranslation = value.translation.height
+                                        scrollOffset = min(max(scrollOffset - (delta / 1200), 0), 1)
+                                    }
+                                    .onEnded { _ in
+                                        guard vs.isAutoScrollEnabled else {
+                                            lastDragTranslation = 0
+                                            return
+                                        }
+                                        lastDragTranslation = 0
+                                        startAutoScroll(speed: vs.autoScrollSpeed, resetPosition: false)
+                                    }
+                            )
                         }
                     }
                 }
@@ -118,6 +138,7 @@ struct BookmarksDetailView: View {
                     // 좌측
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
+                            vs.send(.stop)
                             dismiss()
                         } label: {
                             HStack(spacing: 4) {
@@ -208,7 +229,7 @@ struct BookmarksDetailView: View {
                                                     startAutoScroll(speed: newValue, resetPosition: false)
                                                 }
                                             }
-                                        ), in: 1...3, step: 0.3)
+                                        ), in: 1...8, step: 0.5)
                                         Image(systemName: "gauge.with.dots.needle.100percent")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
@@ -233,7 +254,10 @@ struct BookmarksDetailView: View {
                     
                     // ❷ 고정 높이 컨트롤 바 (항상 같은 레이아웃 → 요동 없음)
                     HStack {
-                        CircleIconButton(systemName: "chevron.left") { vs.send(.prevHymn) }
+                        CircleIconButton(systemName: "chevron.left") {
+                            vs.send(.stop)
+                            vs.send(.prevHymn)
+                        }
                         Spacer(minLength: 12)
                         
                         // 🔹 악보/가사 토글 버튼
@@ -271,7 +295,10 @@ struct BookmarksDetailView: View {
                         CircleIconButton(systemName: "headphones") { vs.send(.setAudioPanel(true)) }
                         
                         Spacer(minLength: 12)
-                        CircleIconButton(systemName: "chevron.right") { vs.send(.nextHymn) }
+                        CircleIconButton(systemName: "chevron.right") {
+                            vs.send(.stop)
+                            vs.send(.nextHymn)
+                        }
                     }
                     .padding(.horizontal, 24)
                     .frame(height: 56) // ✅ 고정 높이로 "자리 흔들림" 방지
@@ -306,6 +333,7 @@ struct BookmarksDetailView: View {
                 // 화면 사라질 때 타이머 정리
                 autoScrollTimer?.invalidate()
                 autoScrollTimer = nil
+                vs.send(.stop)
             }
             // 🔹 풀사이즈 악보
             .fullScreenCover(isPresented: vs.binding(get: \.isFullscreenScore,
@@ -316,8 +344,14 @@ struct BookmarksDetailView: View {
                     minFloorFactor: vs.minFloorFactor,
                     maxScale: vs.maxZoom,
                     onClose: { vs.send(.toggleFullscreenScore(false)) },
-                    onPrev:  { vs.send(.prevHymn) },
-                    onNext:  { vs.send(.nextHymn) }
+                    onPrev:  {
+                        vs.send(.stop)
+                        vs.send(.prevHymn)
+                    },
+                    onNext:  {
+                        vs.send(.stop)
+                        vs.send(.nextHymn)
+                    }
                 )
                 .ignoresSafeArea()
             }
@@ -325,8 +359,9 @@ struct BookmarksDetailView: View {
             .sheet(isPresented: vs.binding(get: \.isAudioPanelPresented,
                                            send: BookmarksFeature.Action.setAudioPanel)) {
                 BookmarkAudioBottomSheetView(store: store)
-                    .presentationDetents([.height(140), .medium]) // 필요에 따라 조절
+                    .presentationDetents([.height(140)])
                     .presentationDragIndicator(.visible)
+                    .presentationBackgroundInteraction(.enabled)
             }
         }
     }

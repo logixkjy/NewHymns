@@ -18,7 +18,7 @@ private struct OrientationReader: View {
                 .onAppear {
                     isLandscape = geo.size.width > geo.size.height
                 }
-                .onChange(of: geo.size) { newSize in
+                .onChange(of: geo.size) { _, newSize in
                     isLandscape = newSize.width > newSize.height
                 }
         }
@@ -56,75 +56,72 @@ struct HymnsView: View {
     
     var body: some View {
         WithViewStore(store, observe: { $0 }) { vs in
-            WithPerceptionTracking {
-                let rebuildKey = vs.isLandscape ? "land" : "port"
-                let isSearching = !vs.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let rebuildKey = vs.isLandscape ? "land" : "port"
+            let isSearching = !vs.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            
+            VStack(spacing: 0) {
+                // 회전 감지 (최상단에 배치)
+                OrientationReader(isLandscape: $isLandscape)
+                    .frame(height: 0)
                 
-                VStack(spacing: 0) {
-                    // 회전 감지 (최상단에 배치)
-                    OrientationReader(isLandscape: $isLandscape)
-                        .frame(height: 0)
-                    
-                    // 상단 고정 검색바
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                        TextField("번호(123) 또는 가사/초성(ㄱㄴㄷ) 검색",
-                                  text: vs.binding(get: \.query, send: HymnsFeature.Action.setQuery))
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .focused($searchFocused)
-                        .submitLabel(.search)
-                        .onSubmit { store.send(.search) }
-                        if !vs.query.isEmpty {
-                            Button {
-                                vs.send(.binding(.set(\.query, "")))
-                                store.send(.search)
-                            } label: {
-                                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-                            }
+                // 상단 고정 검색바
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                    TextField("번호(123) 또는 가사/초성(ㄱㄴㄷ) 검색",
+                              text: vs.binding(get: \.query, send: HymnsFeature.Action.setQuery))
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($searchFocused)
+                    .submitLabel(.search)
+                    .onSubmit { store.send(.search) }
+                    if !vs.query.isEmpty {
+                        Button {
+                            vs.send(.binding(.set(\.query, "")))
+                            store.send(.search)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                         }
                     }
-                    .padding(12)
-                    .background(.ultraThinMaterial)
-                    
-                    Divider()
-                    
-                    // 본문: 검색 중이면 평면 리스트, 아니면 섹션+인덱스
-                    if isSearching {
-                        FlatList(store: store, results: vs.results, hClass: hClass)
-                        // 회전 시 강제 재빌드 (캐시 레이아웃 제거)
-                            .id(isLandscape ? "flat-land" : "flat-port")
-                            .transition(.opacity)
-                    } else {
-                        let sections = makeSections(vs.results, size: 50)
-                        SectionedListWithIndex(
-                            store: store,
-                            sections: sections,
-                            hClass: hClass,
-                            isLandscape: isLandscape
-                        )
-                        .id(isLandscape ? "sec-land" : "sec-port")
+                }
+                .padding(12)
+                .background(.ultraThinMaterial)
+                
+                Divider()
+                
+                // 본문: 검색 중이면 평면 리스트, 아니면 섹션+인덱스
+                if isSearching {
+                    FlatList(store: store, results: vs.results, hClass: hClass)
+                    // 회전 시 강제 재빌드 (캐시 레이아웃 제거)
+                        .id(isLandscape ? "flat-land" : "flat-port")
                         .transition(.opacity)
-                    }
-                    
-                    // 하단 광고(있다면)
-                    BannerSlot()
+                } else {
+                    let sections = makeSections(vs.results, size: 50)
+                    SectionedListWithIndex(
+                        store: store,
+                        sections: sections,
+                        hClass: hClass,
+                        isLandscape: isLandscape
+                    )
+                    .id(isLandscape ? "sec-land" : "sec-port")
+                    .transition(.opacity)
                 }
-                .id(rebuildKey)
-                .onAppear {
-                    store.send(.startObserveOrientation)
-                    store.send(.search)
-                }
-                .onDisappear {
-                  store.send(.stopObserveOrientation)
-                }
-                .refreshable { store.send(.search) }
-                .animation(.easeInOut, value: isSearching)
+                
+                // 하단 광고(있다면)
+                BannerSlot()
             }
+            .id(rebuildKey)
+            .onAppear {
+                store.send(.startObserveOrientation)
+                store.send(.search)
+            }
+            .onDisappear {
+              store.send(.stopObserveOrientation)
+            }
+            .refreshable { store.send(.search) }
+            .animation(.easeInOut, value: isSearching)
         }
     }
 }
-
 // MARK: - Cell 재사용
 private struct HymnCell: View {
     let store: StoreOf<HymnsFeature>
@@ -178,44 +175,42 @@ private struct SectionedListWithIndex: View {
     
     var body: some View {
         ScrollViewReader { proxy in
-            WithPerceptionTracking {
-                ZStack(alignment: .trailing) {
-                    List {
-                        ForEach(sections) { section in
-                            Section(
-                                header:
-                                    Text(section.title)
-                                    .font(.headline)
-                                    .textCase(nil)           // iPad에서 자동 대문자화 방지
-                                    .id(section.anchorID)    // 헤더에 앵커
-                            ) {
-                                ForEach(section.items) { h in HymnCell(store: store, h: h) }
-                            }
+            ZStack(alignment: .trailing) {
+                List {
+                    ForEach(sections) { section in
+                        Section(
+                            header:
+                                Text(section.title)
+                                .font(.headline)
+                                .textCase(nil)           // iPad에서 자동 대문자화 방지
+                                .id(section.anchorID)    // 헤더에 앵커
+                        ) {
+                            ForEach(section.items) { h in HymnCell(store: store, h: h) }
                         }
                     }
-                    .listStyle(.plain)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                    // 회전 시 스크롤리더도 리셋
-                    .id(isLandscape ? "reader-land" : "reader-port")
-                    
-                    if sections.count > 1 {
-                        VStack(spacing: 6) {
-                            ForEach(sections, id: \.id) { section in
-                                Button {
-                                    let anchor = section.anchorID
-                                    DispatchQueue.main.async {
-                                        withAnimation(.easeInOut) { proxy.scrollTo(anchor, anchor: .top) }
-                                    }
-                                } label: {
-                                    Text(section.title.split(separator: "~").first.map(String.init) ?? section.title)
-                                        .font(.caption2)
-                                        .padding(.vertical, 2).padding(.horizontal, 6)
-                                        .background(.ultraThinMaterial, in: Capsule())
+                }
+                .listStyle(.plain)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                // 회전 시 스크롤리더도 리셋
+                .id(isLandscape ? "reader-land" : "reader-port")
+                
+                if sections.count > 1 {
+                    VStack(spacing: 6) {
+                        ForEach(sections, id: \.id) { section in
+                            Button {
+                                let anchor = section.anchorID
+                                DispatchQueue.main.async {
+                                    withAnimation(.easeInOut) { proxy.scrollTo(anchor, anchor: .top) }
                                 }
+                            } label: {
+                                Text(section.title.split(separator: "~").first.map(String.init) ?? section.title)
+                                    .font(.caption2)
+                                    .padding(.vertical, 2).padding(.horizontal, 6)
+                                    .background(.ultraThinMaterial, in: Capsule())
                             }
                         }
-                        .padding(.trailing, 6)
                     }
+                    .padding(.trailing, 6)
                 }
             }
         }

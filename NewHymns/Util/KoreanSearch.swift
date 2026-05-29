@@ -54,7 +54,7 @@ enum KoreanSearch {
     /// 모든 종류의 공백 제거 (일반/줄바꿈/넓은공백 포함)
     static func removeAllSpaces(_ s: String) -> String {
         let extras: [UnicodeScalar] = ["\u{00A0}", "\u{2002}", "\u{2003}", "\u{2009}", "\u{3000}"]
-        var filtered = s.unicodeScalars.filter { !CharacterSet.whitespacesAndNewlines.contains($0) && !extras.contains($0) }
+        let filtered = s.unicodeScalars.filter { !CharacterSet.whitespacesAndNewlines.contains($0) && !extras.contains($0) }
         return String(String.UnicodeScalarView(filtered))
     }
     

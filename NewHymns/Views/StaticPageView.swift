@@ -18,47 +18,39 @@ struct StaticPageView: View {
     @AppStorage("StaticPage.fontSize") private var fontSize: Double = 17
     
     var body: some View {
-        WithViewStore(store, observe: { $0 }) { vs in
+        VStack(spacing: 0) {
+            // 본문
+            ScrollView {
+                Text(store.text)
+                    .font(.system(size: CGFloat(fontSize))) // ✅ 슬라이더 값 반영
+                    .lineSpacing(6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 20)
+            }
             
-            VStack(spacing: 0) {
-                // 본문
-                ScrollView {
-                    Text(vs.text)
-                        .font(.system(size: CGFloat(fontSize))) // ✅ 슬라이더 값 반영
-                        .lineSpacing(6)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 20)
-                }
-                
-                Divider()
-                
-                // 하단 슬라이더 바(고정 영역)
-                HStack(spacing: 12) {
-                    Image(systemName: "textformat.size.smaller")
-                    Slider(value: $fontSize, in: 12...60, step: 1)  // ✅ 슬라이더
-                    Image(systemName: "textformat.size.larger")
-                    Text("\(Int(fontSize))pt")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(.ultraThinMaterial)
-                .appTintedLightOnly(scheme)
+            Divider()
+            
+            // 하단 슬라이더 바(고정 영역)
+            HStack(spacing: 12) {
+                Image(systemName: "textformat.size.smaller")
+                Slider(value: $fontSize, in: 12...60, step: 1)  // ✅ 슬라이더
+                Image(systemName: "textformat.size.larger")
+                Text("\(Int(fontSize))pt")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                if InterstitialAdManager.shared.recordEventAndCheckShow() {
-                    InterstitialAdManager.shared.showIfAvailable()
-                }
-            }
-            // (선택) 간단 영구 저장: 주석 해제해서 쓰세요
-//            .onAppear {
-//                vs.send(.setFontSize(storedFontSize))
-//            }
-//            .onChange(of: vs.fontSize) { newValue in
-//                storedFontSize = newValue
-//            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial)
+            .appTintedLightOnly(scheme)
         }
+        .navigationBarTitleDisplayMode(.inline)
+        // (선택) 간단 영구 저장: 주석 해제해서 쓰세요
+//        .onAppear {
+//            store.send(.setFontSize(storedFontSize))
+//        }
+//        .onChange(of: store.fontSize) { _, newValue in
+//            storedFontSize = newValue
+//        }
     }
 }

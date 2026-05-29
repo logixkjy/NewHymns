@@ -5,19 +5,31 @@ protocol AppOpenAdManagerDelegate: AnyObject {
     func appOpenAdDidFinish()
 }
 
+enum AppOpenAdPlacement {
+    case splash
+    case resume
+    
+    var adUnitID: String {
+        switch self {
+        case .splash:
+            return "ca-app-pub-2746869735313650/6386332804"
+        case .resume:
+            return "ca-app-pub-2746869735313650/6891626845"
+        }
+    }
+}
+
 final class AppOpenAdManager: NSObject {
     static let shared = AppOpenAdManager()
-
-    // ⚠️ 실제 운영 adUnitID로 교체 (지금은 테스트 단위)
-    private let adUnitID = "ca-app-pub-2746869735313650/6386332804"
-
-    private var appOpenAd: AppOpenAd?
-    private var loadDate: Date?
+    
+    private var appOpenAds: [AppOpenAdPlacement: AppOpenAd] = [:]
+    private var loadDates: [AppOpenAdPlacement: Date] = [:]
     private var isShowingAd = false
+    private var showingPlacement: AppOpenAdPlacement?
     weak var delegate: AppOpenAdManagerDelegate?
 
     // 너무 잦은 노출 방지 (원하면 조정)
-    private var lastShownAt: Date?
+    private var lastShownAt: [AppOpenAdPlacement: Date] = [:]
     private let minInterval: TimeInterval = 60 * 3 // 3분
 
     // MARK: - Public
@@ -26,37 +38,47 @@ final class AppOpenAdManager: NSObject {
         MobileAds.shared.start()
     }
     
-    func loadAd() async {
+    func loadAd(for placement: AppOpenAdPlacement = .splash) async {
 //        print("AppOpenAd loadAd")
         // 4시간 만료 체크
-        if let loadDate, Date().timeIntervalSince(loadDate) < 60*60*4, appOpenAd != nil { return }
+        if let loadDate = loadDates[placement],
+           Date().timeIntervalSince(loadDate) < 60*60*4,
+           appOpenAds[placement] != nil {
+            return
+        }
         
         do {
-            appOpenAd = try await AppOpenAd.load(
-                with: adUnitID, request: Request())
-            loadDate = Date()
-            appOpenAd?.fullScreenContentDelegate = self
+            let ad = try await AppOpenAd.load(
+                with: placement.adUnitID, request: Request())
+            appOpenAds[placement] = ad
+            loadDates[placement] = Date()
+            ad.fullScreenContentDelegate = self
 //            print("AppOpenAd loaded")
         } catch {
             print("App open ad failed to load with error: \(error.localizedDescription)")
-            appOpenAd = nil
-            loadDate = nil
+            appOpenAds[placement] = nil
+            loadDates[placement] = nil
         }
     }
         
     /// 스플래시 종료 시점 등에서 호출
-    func showAdIfAvailable(or onNoAd: (() -> Void)? = nil) {
+    func showAdIfAvailable(
+        for placement: AppOpenAdPlacement = .splash,
+        or onNoAd: (() -> Void)? = nil
+    ) {
         // 빈도 제한
-        if let lastShownAt, Date().timeIntervalSince(lastShownAt) < minInterval {
+        if let lastShownAt = lastShownAt[placement],
+           Date().timeIntervalSince(lastShownAt) < minInterval {
             onNoAd?()
             return
         }
         guard !isShowingAd else { return }
-        guard let ad = appOpenAd else {
+        guard let ad = appOpenAds[placement] else {
             onNoAd?()
             return
         }
         isShowingAd = true
+        showingPlacement = placement
         DispatchQueue.main.async {
             ad.present(from: nil)
         }
@@ -92,9 +114,12 @@ extension AppOpenAdManager: FullScreenContentDelegate {
     ) {
         print("AppOpenAd fail to present:", error.localizedDescription)
         isShowingAd = false
-        appOpenAd = nil
+        let placement = showingPlacement ?? .splash
+        appOpenAds[placement] = nil
+        loadDates[placement] = nil
+        showingPlacement = nil
         Task {
-            await loadAd()
+            await loadAd(for: placement)
         }
         // 광고 실패 → 바로 진행
         delegate?.appOpenAdDidFinish()
@@ -103,10 +128,13 @@ extension AppOpenAdManager: FullScreenContentDelegate {
     func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
 //        print("AppOpenAd did dismiss")
         isShowingAd = false
-        lastShownAt = Date()
-        appOpenAd = nil
+        let placement = showingPlacement ?? .splash
+        lastShownAt[placement] = Date()
+        appOpenAds[placement] = nil
+        loadDates[placement] = nil
+        showingPlacement = nil
         Task {
-            await loadAd() // 다음 번을 위해 미리 로드
+            await loadAd(for: placement) // 다음 번을 위해 미리 로드
         }
         delegate?.appOpenAdDidFinish()
     }

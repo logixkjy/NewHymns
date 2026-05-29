@@ -62,6 +62,6 @@ struct ReadingsFeature {
                 return .none
             }
         }
-        .ifLet(\.selection, action: /Action.detail) { ReadingsDetailFeature() }
+        .ifLet(\.selection, action: \.detail) { ReadingsDetailFeature() }
     }
 }

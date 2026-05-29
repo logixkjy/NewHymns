@@ -17,6 +17,7 @@ private func fmt(_ t: TimeInterval) -> String {
 
 struct AudioBottomSheetView: View {
     let store: StoreOf<HymnsFeature>
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         WithViewStore(store, observe: { $0 }) { vs in
@@ -25,6 +26,13 @@ struct AudioBottomSheetView: View {
                     Text("\(vs.hymn.number) \(vs.hymn.title)")
                         .font(.headline)
                     Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                    }
+                    .accessibilityLabel("닫기")
                 }
                 
                 HStack(spacing: 12) {
@@ -57,15 +65,13 @@ struct AudioBottomSheetView: View {
                 }
             }
             .padding(16)
-            .onDisappear {
-                vs.send(.stop) // 화면이 닫히면 재생도 멈춘다.
-            }
         }
     }
 }
 
 struct BookmarkAudioBottomSheetView: View {
     let store: StoreOf<BookmarksFeature>
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         WithViewStore(store, observe: { $0 }) { vs in
@@ -74,6 +80,13 @@ struct BookmarkAudioBottomSheetView: View {
                     Text("\(vs.hymn.number) \(vs.hymn.title)")
                         .font(.headline)
                     Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                    }
+                    .accessibilityLabel("닫기")
                 }
                 
                 HStack(spacing: 12) {
@@ -112,6 +125,7 @@ struct BookmarkAudioBottomSheetView: View {
 
 struct HistoryAudioBottomSheetView: View {
     let store: StoreOf<HistoryFeature>
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         WithViewStore(store, observe: { $0 }) { vs in
@@ -120,6 +134,13 @@ struct HistoryAudioBottomSheetView: View {
                     Text("\(vs.hymn.number) \(vs.hymn.title)")
                         .font(.headline)
                     Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                    }
+                    .accessibilityLabel("닫기")
                 }
                 
                 HStack(spacing: 12) {
@@ -155,4 +176,3 @@ struct HistoryAudioBottomSheetView: View {
         }
     }
 }
-

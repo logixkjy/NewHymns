@@ -19,68 +19,62 @@ struct RootView: View {
     private let menuWidth: CGFloat = 280
     
     var body: some View {
-        WithViewStore(store, observe: { $0 }) { vs in
-            ZStack(alignment: .leading) {
-                if isSplash {
-                    SplashView(isSplash: $isSplash)
-                        .preferredColorScheme(.dark)
-                } else {
-                    ContentHost(
-                        selection: vs.selection,
-                        hymns: store.scope(state: \.hymns, action: RootFeature.Action.hymns),
-                        bookmarks: store.scope(state: \.bookmarks, action: RootFeature.Action.bookmarks),
-                        history: store.scope(state: \.history, action: RootFeature.Action.history),
-                        readings: store.scope(state: \.readings, action: RootFeature.Action.readings),
-                        lordsPrayer: store.scope(state: \.lordsPrayer, action: RootFeature.Action.lordsPrayer),
-                        apostlesCreed: store.scope(state: \.apostlesCreed, action: RootFeature.Action.apostlesCreed),
-                        tenCommandments: store.scope(state: \.tenCommandments, action: RootFeature.Action.tenCommandments),
-                        settings: store.scope(state: \.settings, action: RootFeature.Action.settings),
-                        onTapMenu: { vs.send(.toggleMenu(nil)) }
-                    )
-                    .disabled(vs.menuOpen)
-                    .offset(x: vs.menuOpen ? menuWidth * 0.4 : 0)
-                    .animation(.easeInOut(duration: 0.2), value: vs.menuOpen)
-                    .onChange(of: scenePhase) { newPhase in
-                        switch newPhase {
-                        case .active:
-//                            print("AppOpenAd did become active.")
-                            AppOpenAdManager.shared.showAdIfAvailable()
-                        case .background:
-//                            print("AppOpenAd moved to background. Pre-loading next ad...")
-                            Task {
-                                await AppOpenAdManager.shared.loadAd()
-                            }
-                            break
-                        case .inactive:
-                            break
-                        @unknown default:
-                            break
+        ZStack(alignment: .leading) {
+            if isSplash {
+                SplashView(isSplash: $isSplash)
+                    .preferredColorScheme(.dark)
+            } else {
+                ContentHost(
+                    selection: store.selection,
+                    hymns: store.scope(state: \.hymns, action: \.hymns),
+                    bookmarks: store.scope(state: \.bookmarks, action: \.bookmarks),
+                    history: store.scope(state: \.history, action: \.history),
+                    readings: store.scope(state: \.readings, action: \.readings),
+                    lordsPrayer: store.scope(state: \.lordsPrayer, action: \.lordsPrayer),
+                    apostlesCreed: store.scope(state: \.apostlesCreed, action: \.apostlesCreed),
+                    tenCommandments: store.scope(state: \.tenCommandments, action: \.tenCommandments),
+                    settings: store.scope(state: \.settings, action: \.settings),
+                    onTapMenu: { store.send(.toggleMenu(nil)) }
+                )
+                .disabled(store.menuOpen)
+                .offset(x: store.menuOpen ? menuWidth * 0.4 : 0)
+                .animation(.easeInOut(duration: 0.2), value: store.menuOpen)
+                .onChange(of: scenePhase) { _, newPhase in
+                    switch newPhase {
+                    case .active:
+                        AppOpenAdManager.shared.showAdIfAvailable(for: .resume)
+                    case .background:
+                        Task {
+                            await AppOpenAdManager.shared.loadAd(for: .resume)
                         }
+                    case .inactive:
+                        break
+                    @unknown default:
+                        break
                     }
-                    
-                    if vs.menuOpen {
-                        Color.black.opacity(0.25).ignoresSafeArea()
-                            .onTapGesture { vs.send(.toggleMenu(false)) }
-                            .transition(.opacity)
-                    }
-                    
-                    SideMenuView(selection: vs.selection) { sec in
-                        vs.send(.select(sec))
-                    }
-                    .frame(width: menuWidth)
-                    .offset(x: vs.menuOpen ? 0 : -menuWidth)
-                    .animation(.easeInOut(duration: 0.2), value: vs.menuOpen)
                 }
-            }
-            .gesture(
-                DragGesture().onEnded { value in
-                    let x = value.translation.width
-                    if !vs.menuOpen, x > 80 { vs.send(.toggleMenu(true)) }
-                    if vs.menuOpen, x < -80 { vs.send(.toggleMenu(false)) }
-                }
-            )
                 
+                if store.menuOpen {
+                    Color.black.opacity(0.25).ignoresSafeArea()
+                        .onTapGesture { store.send(.toggleMenu(false)) }
+                        .transition(.opacity)
+                }
+                
+                SideMenuView(selection: store.selection) { sec in
+                    store.send(.select(sec))
+                }
+                .frame(width: menuWidth)
+                .offset(x: store.menuOpen ? 0 : -menuWidth)
+                .animation(.easeInOut(duration: 0.2), value: store.menuOpen)
+            }
         }
+        .gesture(
+            DragGesture().onEnded { value in
+                let x = value.translation.width
+                if !store.menuOpen, x > 80 { store.send(.toggleMenu(true)) }
+                if store.menuOpen, x < -80 { store.send(.toggleMenu(false)) }
+            }
+        )
     }
 }
 

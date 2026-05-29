@@ -40,7 +40,7 @@ struct HistoryFeature {
         var isAudioPanelPresented = false     // 오디오 패널 시트
         // 🔹 자동 스크롤
         var isAutoScrollEnabled: Bool = false // 자동 스크롤 ON/OFF
-        var autoScrollSpeed: Double = 1.0     // 1-3 = 스크롤 속도
+        var autoScrollSpeed: Double = 4.5     // 1-8 = 스크롤 속도
     }
     
     enum Action: Equatable {

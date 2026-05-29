@@ -40,14 +40,14 @@ struct RootFeature {
     }
     
     var body: some Reducer<State, Action> {
-        Scope(state: \.hymns, action: /Action.hymns) { HymnsFeature() }
-        Scope(state: \.readings, action: /Action.readings) { ReadingsFeature() }
-        Scope(state: \.bookmarks, action: /Action.bookmarks) { BookmarksFeature() }
-        Scope(state: \.history, action: /Action.history) { HistoryFeature() }
-        Scope(state: \.lordsPrayer, action: /Action.lordsPrayer) { StaticPageFeature() }
-        Scope(state: \.apostlesCreed, action: /Action.apostlesCreed) { StaticPageFeature() }
-        Scope(state: \.tenCommandments, action: /Action.tenCommandments) { StaticPageFeature() }
-        Scope(state: \.settings, action: /Action.settings) { SettingsFeature() }
+        Scope(state: \.hymns, action: \.hymns) { HymnsFeature() }
+        Scope(state: \.readings, action: \.readings) { ReadingsFeature() }
+        Scope(state: \.bookmarks, action: \.bookmarks) { BookmarksFeature() }
+        Scope(state: \.history, action: \.history) { HistoryFeature() }
+        Scope(state: \.lordsPrayer, action: \.lordsPrayer) { StaticPageFeature() }
+        Scope(state: \.apostlesCreed, action: \.apostlesCreed) { StaticPageFeature() }
+        Scope(state: \.tenCommandments, action: \.tenCommandments) { StaticPageFeature() }
+        Scope(state: \.settings, action: \.settings) { SettingsFeature() }
         
         Reduce { state, action in
             switch action {

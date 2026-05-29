@@ -284,30 +284,29 @@ struct NewHymnsApp: App {
                     // ❶ BookmarkRepo: bookmark.db → HYMN 조인(제목/가사 포함) 후 Hymn으로 반환
                     dep.bookmarkRepo = BookmarkRepo(
                         list: {
-                            // ✅ 메인 액터 격리 메서드 안전 호출
-                            let nums: Set<Int> = try await MainActor.run {
-                                try markService.bookmarkedSet()
-                            }
-                            guard !nums.isEmpty else { return [] }
-                            
-                            // IN (?,?,?) 플레이스홀더 구성
-                            let placeholders = Array(repeating: "?", count: nums.count).joined(separator: ",")
-                            let rows = try hymnDB.query("""
-                          SELECT number, title, words, img, youtubeId FROM NEW_HYMN
-                          WHERE number IN (\(placeholders))
-                          ORDER BY number
-                        """, Array(nums) )
-                            
-                            return rows.map { r in
-                                let num = (r.columns["NUMBER"] as! NSNumber).intValue
-                                return Hymn(
-                                    number: num,
-                                    title:  r.columns["TITLE"] as! String,
-                                    words:  r.columns["WORDS"] as! String,
-                                    bookmark: true,
-                                    img:    r.columns["IMG"] as! String,
-                                    youtubeId: (r.columns["YOUTUBEID"] as? NSNumber)?.intValue ?? 0
-                                )
+                            try await MainActor.run {
+                                let nums: Set<Int> = try markService.bookmarkedSet()
+                                guard !nums.isEmpty else { return [] }
+                                
+                                // IN (?,?,?) 플레이스홀더 구성
+                                let placeholders = Array(repeating: "?", count: nums.count).joined(separator: ",")
+                                let rows = try hymnDB.query("""
+                              SELECT number, title, words, img, youtubeId FROM NEW_HYMN
+                              WHERE number IN (\(placeholders))
+                              ORDER BY number
+                            """, Array(nums))
+                                
+                                return rows.map { r in
+                                    let num = (r.columns["NUMBER"] as! NSNumber).intValue
+                                    return Hymn(
+                                        number: num,
+                                        title:  r.columns["TITLE"] as! String,
+                                        words:  r.columns["WORDS"] as! String,
+                                        bookmark: true,
+                                        img:    r.columns["IMG"] as! String,
+                                        youtubeId: (r.columns["YOUTUBEID"] as? NSNumber)?.intValue ?? 0
+                                    )
+                                }
                             }
                         },
                         
@@ -341,19 +340,19 @@ struct NewHymnsApp: App {
                     // ❷ HistoryRepo: TBL_HISTORY → 최근순으로 반환
                     dep.historyRepo = HistoryRepo(
                         list: {
-                            let rows = try await MainActor.run {
-                                try markService.db.query("""
-                              SELECT number, title, date
-                              FROM TBL_HISTORY
-                              ORDER BY date DESC, _id DESC
-                            """, [])
-                            }
-                            return rows.map { r in
-                                HistoryItem(
-                                    number: (r.columns["NUMBER"] as! NSNumber).intValue,
-                                    title:  r.columns["TITLE"] as! String,
-                                    date:   r.columns["DATE"] as! String
-                                )
+                            try await MainActor.run {
+                                let rows = try markService.db.query("""
+                                  SELECT number, title, date
+                                  FROM TBL_HISTORY
+                                  ORDER BY date DESC, _id DESC
+                                """, [])
+                                return rows.map { r in
+                                    HistoryItem(
+                                        number: (r.columns["NUMBER"] as! NSNumber).intValue,
+                                        title:  r.columns["TITLE"] as! String,
+                                        date:   r.columns["DATE"] as! String
+                                    )
+                                }
                             }
                         },
                         

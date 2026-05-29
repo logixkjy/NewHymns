@@ -12,26 +12,21 @@ import ComposableArchitecture
 struct HistoryView: View {
     let store: StoreOf<HistoryFeature>
     var body: some View {
-        WithViewStore(store, observe: { $0 }) { vs in
-            VStack(spacing: 0) {
-                List {
-                    ForEach(vs.items) { h in
-                        HistoryHymnCell(store: store, h: h)
-                    }
-                    .onDelete { vs.send(.delete($0)) }
+        VStack(spacing: 0) {
+            List {
+                ForEach(store.items) { h in
+                    HistoryHymnCell(store: store, h: h)
                 }
-                .listStyle(.plain)
-                
-                BannerSlot()
+                .onDelete { store.send(.delete($0)) }
             }
-            .onAppear {
-                vs.send(.onAppear)
-                if InterstitialAdManager.shared.recordEventAndCheckShow() {
-                    InterstitialAdManager.shared.showIfAvailable()
-                }
-            }
-            .refreshable { vs.send(.refresh) }
+            .listStyle(.plain)
+            
+            BannerSlot()
         }
+        .onAppear {
+            store.send(.onAppear)
+        }
+        .refreshable { store.send(.refresh) }
     }
 }
 

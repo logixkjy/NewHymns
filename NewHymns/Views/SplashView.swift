@@ -55,7 +55,7 @@ struct SplashView: View {
                 DispatchQueue.main.async { isSplash = false }
                 _ = adBridge // 캡처 경고 회피용(선택)
             }
-            await AppOpenAdManager.shared.loadAd()
+            await AppOpenAdManager.shared.loadAd(for: .splash)
             
             // 2) 스플래시 타이머 시작
             startTimer()
@@ -71,7 +71,7 @@ struct SplashView: View {
         timer?.schedule(deadline: .now() + 3)
         timer?.setEventHandler {
             // 3) 타이머 끝났을 때: 광고 있으면 표시, 없으면 바로 진행
-            AppOpenAdManager.shared.showAdIfAvailable {
+            AppOpenAdManager.shared.showAdIfAvailable(for: .splash) {
                 self.isSplash = false
             }
         }
